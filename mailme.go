@@ -13,7 +13,6 @@ import (
 
 	"gopkg.in/gomail.v2"
 
-	nfhttp "github.com/netlify/netlify-commons/http"
 	"github.com/sirupsen/logrus"
 )
 
@@ -117,7 +116,10 @@ func (t *TemplateCache) Set(key, value string, expirationTime time.Duration) (*t
 }
 
 func (t *TemplateCache) fetchTemplate(url string, triesLeft int) (string, error) {
-	client := nfhttp.SafeHTTPClient(http.DefaultClient, t.logger)
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
 	resp, err := client.Get(url)
 	if err != nil && triesLeft > 0 {
 		return t.fetchTemplate(url, triesLeft-1)
