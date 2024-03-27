@@ -71,6 +71,7 @@ func (m *Mailer) Mail(to, subjectTemplate, templateURL, defaultTemplate string, 
 	mail.SetBody("text/html", body)
 
 	dial := gomail.NewPlainDialer(m.Host, m.Port, m.User, m.Pass)
+	dial.LocalName = m.BaseURL
 	return dial.DialAndSend(mail)
 
 }
