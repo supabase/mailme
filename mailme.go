@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"html/template"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -71,7 +71,7 @@ func (m *Mailer) Mail(to, subjectTemplate, templateURL, defaultTemplate string, 
 	mail.SetHeader("Subject", subject.String())
 	mail.SetBody("text/html", body)
 
-	dial := gomail.NewPlainDialer(m.Host, m.Port, m.User, m.Pass)
+	dial := gomail.NewDialer(m.Host, m.Port, m.User, m.Pass)
 	if m.LocalName != "" {
 		dial.LocalName = m.LocalName
 	}
@@ -133,7 +133,7 @@ func (t *TemplateCache) fetchTemplate(url string, triesLeft int) (string, error)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == 200 { // OK
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil && triesLeft > 0 {
 			return t.fetchTemplate(url, triesLeft-1)
 		}
