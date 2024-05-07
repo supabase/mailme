@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"html/template"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -24,15 +24,16 @@ const TemplateExpiration = 10 * time.Second
 
 // Mailer lets MailMe send templated mails
 type Mailer struct {
-	From    string
-	Host    string
-	Port    int
-	User    string
-	Pass    string
-	BaseURL string
-	FuncMap template.FuncMap
-	cache   *TemplateCache
-	Logger  logrus.FieldLogger
+	From      string
+	Host      string
+	Port      int
+	User      string
+	Pass      string
+	BaseURL   string
+	LocalName string
+	FuncMap   template.FuncMap
+	cache     *TemplateCache
+	Logger    logrus.FieldLogger
 }
 
 // Mail sends a templated mail. It will try to load the template from a URL, and
@@ -70,8 +71,10 @@ func (m *Mailer) Mail(to, subjectTemplate, templateURL, defaultTemplate string, 
 	mail.SetHeader("Subject", subject.String())
 	mail.SetBody("text/html", body)
 
-	dial := gomail.NewPlainDialer(m.Host, m.Port, m.User, m.Pass)
-	dial.LocalName = m.Host
+	dial := gomail.NewDialer(m.Host, m.Port, m.User, m.Pass)
+	if m.LocalName != "" {
+		dial.LocalName = m.LocalName
+	}
 	return dial.DialAndSend(mail)
 
 }
@@ -130,7 +133,7 @@ func (t *TemplateCache) fetchTemplate(url string, triesLeft int) (string, error)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == 200 { // OK
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil && triesLeft > 0 {
 			return t.fetchTemplate(url, triesLeft-1)
 		}
