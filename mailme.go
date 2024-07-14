@@ -3,6 +3,7 @@ package mailme
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -11,9 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/gomail.v2"
-
 	"github.com/sirupsen/logrus"
+	"github.com/wneessen/go-mail"
 )
 
 // TemplateRetries is the amount of time MailMe will try to fetch a URL before giving up
@@ -65,17 +65,26 @@ func (m *Mailer) Mail(to, subjectTemplate, templateURL, defaultTemplate string, 
 		return err
 	}
 
-	mail := gomail.NewMessage()
-	mail.SetHeader("From", m.From)
-	mail.SetHeader("To", to)
-	mail.SetHeader("Subject", subject.String())
-	mail.SetBody("text/html", body)
-
-	dial := gomail.NewDialer(m.Host, m.Port, m.User, m.Pass)
-	if m.LocalName != "" {
-		dial.LocalName = m.LocalName
+	msg := mail.NewMsg()
+	if err := msg.From(m.From); err != nil {
+		return fmt.Errorf("failed to set mail FROM address: %w", err)
 	}
-	return dial.DialAndSend(mail)
+	if err := msg.To(to); err != nil {
+		return fmt.Errorf("failed to set mail TO address: %w", err)
+	}
+	msg.Subject(subject.String())
+	msg.SetBodyString(mail.TypeTextHTML, body)
+
+	client, err := mail.NewClient(m.Host, mail.WithPort(m.Port), mail.WithUsername(m.User),
+		mail.WithPassword(m.Pass))
+	if m.LocalName != "" {
+		client, err = mail.NewClient(m.Host, mail.WithPort(m.Port), mail.WithUsername(m.User),
+			mail.WithPassword(m.Pass), mail.WithHELO(m.LocalName))
+	}
+	if err != nil {
+		return fmt.Errorf("failed to create mail client: %w", err)
+	}
+	return client.DialAndSend(msg)
 
 }
 
