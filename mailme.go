@@ -2,6 +2,7 @@ package mailme
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"html/template"
 	"io"
@@ -31,6 +32,7 @@ type Mailer struct {
 	Pass      string
 	BaseURL   string
 	LocalName string
+	Insecure  bool
 	FuncMap   template.FuncMap
 	cache     *TemplateCache
 	Logger    logrus.FieldLogger
@@ -72,6 +74,9 @@ func (m *Mailer) Mail(to, subjectTemplate, templateURL, defaultTemplate string, 
 	mail.SetBody("text/html", body)
 
 	dial := gomail.NewDialer(m.Host, m.Port, m.User, m.Pass)
+	if m.Insecure {
+		dial.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+	}
 	if m.LocalName != "" {
 		dial.LocalName = m.LocalName
 	}
